@@ -223,7 +223,7 @@ namespace navfn {
   //
   // set up cost array, usually from ROS
   //
-
+  // #define COSTYPE unsigned char
   void
     NavFn::setCostmap(const COSTTYPE *cmap, bool isROS, bool allow_unknown)
     {
@@ -256,8 +256,7 @@ namespace navfn {
           }
         }
       }
-
-      else				// not a ROS map, just a PGM
+      else // not a ROS map, just a PGM
       {
         for (int i=0; i<ny; i++)
         {
@@ -301,6 +300,7 @@ namespace navfn {
       propNavFnDijkstra(std::max(nx*ny/20,nx+ny),atStart);
 
       // path
+      // 计算路径
       int len = calcPath(nx*ny/2);
 
       if (len > 0)			// found plan
@@ -383,7 +383,9 @@ namespace navfn {
 #endif
     }
 
-
+  // current priority 当前访问的点
+  // next priority 未访问的具有较小距离的点 
+  // over priority 已经访问过的点
   // inserting onto the priority blocks
 #define push_cur(n)  { if (n>=0 && n<ns && !pending[n] && \
     costarr[n]<COST_OBS && curPe<PRIORITYBUFSIZE) \
@@ -435,6 +437,7 @@ namespace navfn {
       memset(pending, 0, ns*sizeof(bool));
 
       // set goal
+      // 设置目标
       int k = goal[0] + goal[1]*nx;
       initCost(k,0);
 
@@ -451,7 +454,11 @@ namespace navfn {
 
 
   // initialize a goal-type cost for starting propagation
-
+  /**
+   * @brief  Initialize cell k with cost v for propagation
+   * @param k the cell to initialize  k是costmap中第k个初始化的序列号
+   * @param v the cost to give to the cell v是初始化单元格的值
+   */
   void
     NavFn::initCost(int k, float v)
     {
@@ -459,7 +466,7 @@ namespace navfn {
       push_cur(k+1);
       push_cur(k-1);
       push_cur(k-nx);
-      push_cur(k+nx);
+      push_cur(k+nx); // 这个点十字方向
     }
 
 
@@ -477,6 +484,7 @@ namespace navfn {
     NavFn::updateCell(int n)
     {
       // get neighbors
+      // 得到n点附近点（十字方向）
       float u,d,l,r;
       l = potarr[n-1];
       r = potarr[n+1];		
@@ -487,6 +495,7 @@ namespace navfn {
       //  ROS_INFO("[Update] cost: %d\n", costarr[n]);
 
       // find lowest, and its lowest neighbor
+      // 取上和下，左和右两个方向的最小值
       float ta, tc;
       if (l<r) tc=l; else tc=r;
       if (u<d) ta=u; else ta=d;
@@ -495,6 +504,8 @@ namespace navfn {
       if (costarr[n] < COST_OBS)	// don't propagate into obstacles
       {
         float hf = (float)costarr[n]; // traversability factor
+
+        // 比较两个方向的最小值，ta储存两个方向上的最小值（默认ta是上下方向）
         float dc = tc-ta;		// relative cost between ta,tc
         if (dc < 0) 		// ta is lowest
         {
@@ -503,6 +514,10 @@ namespace navfn {
         }
 
         // calculate new potential
+        // 计算新的potential
+        // (tc - ta) > costarr[n]
+        //   yes:   pot = ta + hf
+        //   no:    pot = ta + hf * -0.2301*d*d + 0.5307*d + 0.7040; d = (tc - ta) / costarr[n]; 
         float pot;
         if (dc >= hf)		// if too large, use ta-only update
           pot = ta+hf;
@@ -519,6 +534,18 @@ namespace navfn {
         //      ROS_INFO("[Update] new pot: %d\n", costarr[n]);
 
         // now add affected neighbors to priority blocks
+        // if pot < potarr[n]
+        //   yes:  le = 0.707106781 * costarr[n-1]
+        //         re = 0.707106781 * costarr[n+1]
+        //         ue = 0.707106781 * costarr[n-nx]
+        //         de = 0.707106781 * costarr[n+nx]
+        //         potarr[n] = pot;
+        //         l = potarr[n-1]; r = potarr[n+1]; u = potarr[n-nx]; d = potarr[n+nx];
+        //         if pot < curT
+        //            yes: if l > pot + le 
+        //                    yes: push_next(n-1)
+        //            no: if l > pot + le 
+        //                   yes: push_over(n-1)   
         if (pot < potarr[n])
         {
           float le = INVSQRT2*(float)costarr[n-1];
@@ -648,6 +675,12 @@ namespace navfn {
   //   or until the Start cell is found (atStart = true)
   //
 
+  /**
+   * @brief  Run propagation for <cycles> iterations, or until start is reached using breadth-first Dijkstra method
+   * @param cycles The maximum number of iterations to run for
+   * @param atStart Whether or not to stop when the start point is reached
+   * @return true if the start point is reached
+   */
   bool
     NavFn::propNavFnDijkstra(int cycles, bool atStart)	
     {
@@ -658,13 +691,14 @@ namespace navfn {
       // set up start cell
       int startCell = start[1]*nx + start[0];
 
+      // cycles 迭代次数
       for (; cycle < cycles; cycle++) // go for this many cycles, unless interrupted
       {
-        // 
+        // 如果curP 和nextP为空的话
         if (curPe == 0 && nextPe == 0) // priority blocks empty
           break;
 
-        // stats
+        // stats nwv是最大值
         nc += curPe;
         if (curPe > nwv)
           nwv = curPe;
@@ -685,6 +719,7 @@ namespace navfn {
           displayFn(this);
 
         // swap priority blocks curP <=> nextP
+        // 交换curP和nextP缓冲区
         curPe = nextPe;
         nextPe = 0;
         pb = curP;		// swap buffers
@@ -695,6 +730,8 @@ namespace navfn {
         if (curPe == 0)
         {
           curT += priInc;	// increment priority threshold
+
+          // 交换curP和nextP缓冲区
           curPe = overPe;	// set current to overflow block
           overPe = 0;
           pb = curP;		// swap buffers
@@ -816,10 +853,13 @@ namespace navfn {
   //  1. Stuck at same index position
   //  2. Doesn't get near goal
   //  3. Surrounded by high potentials
-  //
-
-  int
-    NavFn::calcPath(int n, int *st)
+  /**
+   * @brief  Calculates the path for at mose <n> cycles 计算路径，最多计算n圈
+   * @param n The maximum number of cycles to run for
+   * @param *st  
+   * @return The lenght of the path found
+   */
+    int NavFn::calcPath(int n, int *st)
     {
       // test write
       //savemap("test");
@@ -834,8 +874,9 @@ namespace navfn {
         npathbuf = n;
       }
 
-      // set up start position at cell
+      // set up start position at cell 
       // st is always upper left corner for 4-point bilinear interpolation 
+      // 设置起始地点
       if (st == NULL) st = start;
       int stc = st[1]*nx + st[0];
 
@@ -848,14 +889,20 @@ namespace navfn {
       for (int i=0; i<n; i++)
       {
         // check if near goal
+        // 0 < stc + (int)round(dx)+(int)(nx * round(dy)) < nx * ny -1 
+        // 找到接近目标的点
         int nearest_point=std::max(0,std::min(nx*ny-1,stc+(int)round(dx)+(int)(nx*round(dy))));
-        if (potarr[nearest_point] < COST_NEUTRAL)
+
+        // v = COST_NEUTRAL + COST_FACTOR * v;
+        // costmap 就是上述公式算出来的，所以COST_NEUTRAL 就是前面设置的目标值goal = 0
+        if (potarr[nearest_point] < COST_NEUTRAL) 
         {
           pathx[npath] = (float)goal[0];
           pathy[npath] = (float)goal[1];
           return ++npath;	// done!
         }
 
+        // 已经超出地图的边境了 ns = nx × ny
         if (stc < nx || stc > ns-nx) // would be out of bounds
         {
           ROS_DEBUG("[PathCalc] Out of bounds");
@@ -867,6 +914,7 @@ namespace navfn {
         pathy[npath] = stc/nx + dy;
         npath++;
 
+        // 检测到路径形成了振荡
         bool oscillation_detected = false;
         if( npath > 2 &&
             pathx[npath-1] == pathx[npath-3] &&
@@ -876,10 +924,12 @@ namespace navfn {
           oscillation_detected = true;
         }
 
+        // 检测potential附近八个点
         int stcnx = stc+nx;
         int stcpx = stc-nx;
 
-        // check for potentials at eight positions near cell
+        // check for potentials at eight positions near cell 
+        // 检测在potential附近八个点，是否有未曾探索的点
         if (potarr[stc] >= POT_HIGH ||
             potarr[stc+1] >= POT_HIGH ||
             potarr[stc-1] >= POT_HIGH ||
@@ -893,6 +943,7 @@ namespace navfn {
         {
           ROS_DEBUG("[Path] Pot fn boundary, following grid (%0.1f/%d)", potarr[stc], npath);
           // check eight neighbors to find the lowest
+          // 查找邻近点最小值 minp 最小potential minc 最小值位置
           int minc = stc;
           int minp = potarr[stc];
           int st = stcpx - 1;
@@ -911,6 +962,8 @@ namespace navfn {
           if (potarr[st] < minp) {minp = potarr[st]; minc = st; }
           st++;
           if (potarr[st] < minp) {minp = potarr[st]; minc = st; }
+          
+          // stc 目前八个点中potential最小的点
           stc = minc;
           dx = 0;
           dy = 0;
@@ -925,9 +978,7 @@ namespace navfn {
             return 0;
           }
         }
-
-        // have a good gradient here
-        else			
+        else // have a good gradient here			
         {
 
           // get grad at four positions near cell
@@ -938,6 +989,7 @@ namespace navfn {
 
 
           // get interpolated gradient
+          // 得到插值梯度
           float x1 = (1.0-dx)*gradx[stc] + dx*gradx[stc+1];
           float x2 = (1.0-dx)*gradx[stcnx] + dx*gradx[stcnx+1];
           float x = (1.0-dy)*x1 + dy*x2; // interpolated x
@@ -964,6 +1016,7 @@ namespace navfn {
           dy += y*ss;
 
           // check for overflow
+          // -1.0 < dx < 1.0  -1.0 < dy < 1.0
           if (dx > 1.0) { stc++; dx -= 1.0; }
           if (dx < -1.0) { stc--; dx += 1.0; }
           if (dy > 1.0) { stc+=nx; dy -= 1.0; }
@@ -1001,7 +1054,7 @@ namespace navfn {
       float dx = 0.0;
       float dy = 0.0;
 
-      // check for in an obstacle
+      // check for in an obstacle //在障碍物中 dx,dy = COST_OBS
       if (cv >= POT_HIGH) 
       {
         if (potarr[n-1] < POT_HIGH)
@@ -1014,8 +1067,7 @@ namespace navfn {
         else if (potarr[nx+1] < POT_HIGH)
           dy = COST_OBS;
       }
-
-      else				// not in an obstacle
+      else	// not in an obstacle // 不在障碍物中 dx = dx + cv - potential
       {
         // dx calc, average to sides
         if (potarr[n-1] < POT_HIGH)
@@ -1031,6 +1083,8 @@ namespace navfn {
       }
 
       // normalize
+      // gradx = dx / （dx × dx + dy × dy）；
+      // grady = dy / （dx × dx + dy × dy）；
       float norm = hypot(dx, dy);
       if (norm > 0)
       {
