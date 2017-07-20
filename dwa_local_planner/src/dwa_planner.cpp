@@ -210,10 +210,12 @@ namespace dwa_local_planner {
    * This function is used when other strategies are to be applied,
    * but the cost functions for obstacles are to be reused.
    */
+  // 给定位置、速度和速度采样值
   bool DWAPlanner::checkTrajectory(
       Eigen::Vector3f pos,
       Eigen::Vector3f vel,
-      Eigen::Vector3f vel_samples){
+      Eigen::Vector3f vel_samples)
+  {
     oscillation_costs_.resetOscillationFlags();
     base_local_planner::Trajectory traj;
     geometry_msgs::PoseStamped goal_pose = global_plan_.back();

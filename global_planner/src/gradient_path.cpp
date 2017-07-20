@@ -259,10 +259,16 @@ bool GradientPath::getPath(float* potential, double start_x, double start_y, dou
  */
 
 //
-// gradient calculations
+// gradient calculations 
 //
 // calculate gradient at a cell
 // positive value are to the right and down
+/**
+ * 梯度计算
+ * @param  potential [description]
+ * @param  n         [description]
+ * @return           [description]
+ */
 float GradientPath::gradCell(float* potential, int n) {
     if (gradx_[n] + grady_[n] > 0.0)    // check this cell
         return 1.0;
@@ -274,6 +280,7 @@ float GradientPath::gradCell(float* potential, int n) {
     float dy = 0.0;
 
     // check for in an obstacle
+    // 检测是否在障碍物中
     if (cv >= POT_HIGH) {
         if (potential[n - 1] < POT_HIGH)
             dx = -lethal_cost_;
@@ -285,8 +292,7 @@ float GradientPath::gradCell(float* potential, int n) {
         else if (potential[xs_ + 1] < POT_HIGH)
             dy = lethal_cost_;
     }
-
-    else                // not in an obstacle
+    else// not in an obstacle 不在障碍物中
     {
         // dx calc, average to sides
         if (potential[n - 1] < POT_HIGH)

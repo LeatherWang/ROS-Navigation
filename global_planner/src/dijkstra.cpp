@@ -76,7 +76,18 @@ void DijkstraExpansion::setSize(int xs, int ys) {
 //   or until it runs out of cells to update,
 //   or until the Start cell is found (atStart = true)
 //
-
+//cell cost（网格的值，从0~255只需要三种情况：Occupied被占用，Free自由区域，Unknown space未知区域）
+/**
+ * 计算可行点
+ * @param  costs     [description]
+ * @param  start_x   [description]
+ * @param  start_y   [description]
+ * @param  end_x     [description]
+ * @param  end_y     [description]
+ * @param  cycles    [description]
+ * @param  potential [description]
+ * @return           [description]
+ */
 bool DijkstraExpansion::calculatePotentials(unsigned char* costs, double start_x, double start_y, double end_x, double end_y,
                                            int cycles, float* potential) {
     cells_visited_ = 0;
@@ -92,11 +103,14 @@ bool DijkstraExpansion::calculatePotentials(unsigned char* costs, double start_x
     std::fill(potential, potential + ns_, POT_HIGH);
 
     // set goal
+    // 设置目标点 x + nx_ * y; （nx_ 地图的宽度）
     int k = toIndex(start_x, start_y);
 
     if(precise_)
     {
         double dx = start_x - (int)start_x, dy = start_y - (int)start_y;
+
+        // 对dx进行四舍五入
         dx = floorf(dx * 100 + 0.5) / 100;
         dy = floorf(dy * 100 + 0.5) / 100;
         potential[k] = neutral_cost_ * 2 * dx * dy;

@@ -56,7 +56,7 @@ void SimpleTrajectoryGenerator::initialise(
   sample_params_.insert(sample_params_.end(), additional_samples.begin(), additional_samples.end());
 }
 
-
+// 初始化
 void SimpleTrajectoryGenerator::initialise(
     const Eigen::Vector3f& pos,
     const Eigen::Vector3f& vel,
@@ -95,6 +95,7 @@ void SimpleTrajectoryGenerator::initialise(
       max_vel_x = std::max(std::min(max_vel_x, dist / sim_time_), min_vel_x);
       max_vel_y = std::max(std::min(max_vel_y, dist / sim_time_), min_vel_y);
 
+	  // 通过轨迹模拟最大和最小速度
       // if we use continous acceleration, we can sample the max velocity we can reach in sim_time_
       max_vel[0] = std::min(max_vel_x, vel[0] + acc_lim[0] * sim_time_);
       max_vel[1] = std::min(max_vel_y, vel[1] + acc_lim[1] * sim_time_);
@@ -237,12 +238,13 @@ bool SimpleTrajectoryGenerator::generateTrajectory(
     traj.addPoint(pos[0], pos[1], pos[2]);
 
     if (continued_acceleration_) {
-      //calculate velocities
+      //calculate velocities 计算新的速度
       loop_vel = computeNewVelocities(sample_target_vel, loop_vel, limits_->getAccLimits(), dt);
       //ROS_WARN_NAMED("Generator", "Flag: %d, Loop_Vel %f, %f, %f", continued_acceleration_, loop_vel[0], loop_vel[1], loop_vel[2]);
     }
 
     //update the position of the robot using the velocities passed in
+	// 计算新的位置
     pos = computeNewPositions(pos, loop_vel, dt);
 
   } // end for simulation steps
@@ -250,6 +252,7 @@ bool SimpleTrajectoryGenerator::generateTrajectory(
   return num_steps > 0; // true if trajectory has at least one point
 }
 
+// ROS运动模型，轨迹推演模型，计算新的位置
 Eigen::Vector3f SimpleTrajectoryGenerator::computeNewPositions(const Eigen::Vector3f& pos,
     const Eigen::Vector3f& vel, double dt) {
   Eigen::Vector3f new_pos = Eigen::Vector3f::Zero();
@@ -261,11 +264,14 @@ Eigen::Vector3f SimpleTrajectoryGenerator::computeNewPositions(const Eigen::Vect
 
 /**
  * cheange vel using acceleration limits to converge towards sample_target-vel
+ * 采样新的速度
  */
 Eigen::Vector3f SimpleTrajectoryGenerator::computeNewVelocities(const Eigen::Vector3f& sample_target_vel,
     const Eigen::Vector3f& vel, Eigen::Vector3f acclimits, double dt) {
   Eigen::Vector3f new_vel = Eigen::Vector3f::Zero();
   for (int i = 0; i < 3; ++i) {
+	
+	// 移动机器人受自身最大最小速度限制 
     if (vel[i] < sample_target_vel[i]) {
       new_vel[i] = std::min(double(sample_target_vel[i]), vel[i] + acclimits[i] * dt);
     } else {

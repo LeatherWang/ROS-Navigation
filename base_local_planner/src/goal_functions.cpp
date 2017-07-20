@@ -66,7 +66,8 @@ namespace base_local_planner {
     pub.publish(gui_path);
   }
 
-  void prunePlan(const tf::Stamped<tf::Pose>& global_pose, std::vector<geometry_msgs::PoseStamped>& plan, std::vector<geometry_msgs::PoseStamped>& global_plan){
+  void prunePlan(const tf::Stamped<tf::Pose>& global_pose, std::vector<geometry_msgs::PoseStamped>& plan, std::vector<geometry_msgs::PoseStamped>& global_plan)
+  {
     ROS_ASSERT(global_plan.size() >= plan.size());
     std::vector<geometry_msgs::PoseStamped>::iterator it = plan.begin();
     std::vector<geometry_msgs::PoseStamped>::iterator global_it = global_plan.begin();
@@ -91,7 +92,8 @@ namespace base_local_planner {
       const tf::Stamped<tf::Pose>& global_pose,
       const costmap_2d::Costmap2D& costmap,
       const std::string& global_frame,
-      std::vector<geometry_msgs::PoseStamped>& transformed_plan){
+      std::vector<geometry_msgs::PoseStamped>& transformed_plan)
+  {
     transformed_plan.clear();
 
     if (global_plan.empty()) {

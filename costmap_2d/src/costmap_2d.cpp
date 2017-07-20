@@ -205,6 +205,15 @@ void Costmap2D::mapToWorld(unsigned int mx, unsigned int my, double& wx, double&
   wy = origin_y_ + (my + 0.5) * resolution_;
 }
 
+/**
+ * @brief  Convert from world coordinates to map coordinates without checking for legal bounds
+ *         将世界坐标系点转换到地图坐标系
+ * @param  wx The x world coordinate
+ * @param  wy The y world coordinate
+ * @param  mx Will be set to the associated map x coordinate
+ * @param  my Will be set to the associated map y coordinate
+ * @note   The returned map coordinates <b>are not guaranteed to lie within the map.</b>
+ */
 bool Costmap2D::worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my) const
 {
   if (wx < origin_x_ || wy < origin_y_)

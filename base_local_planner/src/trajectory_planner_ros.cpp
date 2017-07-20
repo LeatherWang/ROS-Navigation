@@ -280,7 +280,8 @@ namespace base_local_planner {
       delete world_model_;
   }
 
-  bool TrajectoryPlannerROS::stopWithAccLimits(const tf::Stamped<tf::Pose>& global_pose, const tf::Stamped<tf::Pose>& robot_vel, geometry_msgs::Twist& cmd_vel){
+  bool TrajectoryPlannerROS::stopWithAccLimits(const tf::Stamped<tf::Pose>& global_pose, const tf::Stamped<tf::Pose>& robot_vel, geometry_msgs::Twist& cmd_vel)
+  {
     //slow down with the maximum possible acceleration... we should really use the frequency that we're running at to determine what is feasible
     //but we'll use a tenth of a second to be consistent with the implementation of the local planner.
     double vx = sign(robot_vel.getOrigin().x()) * std::max(0.0, (fabs(robot_vel.getOrigin().x()) - acc_lim_x_ * sim_period_));
@@ -309,7 +310,8 @@ namespace base_local_planner {
     return false;
   }
 
-  bool TrajectoryPlannerROS::rotateToGoal(const tf::Stamped<tf::Pose>& global_pose, const tf::Stamped<tf::Pose>& robot_vel, double goal_th, geometry_msgs::Twist& cmd_vel){
+  bool TrajectoryPlannerROS::rotateToGoal(const tf::Stamped<tf::Pose>& global_pose, const tf::Stamped<tf::Pose>& robot_vel, double goal_th, geometry_msgs::Twist& cmd_vel)
+  {
     double yaw = tf::getYaw(global_pose.getRotation());
     double vel_yaw = tf::getYaw(robot_vel.getRotation());
     cmd_vel.linear.x = 0;
@@ -369,7 +371,14 @@ namespace base_local_planner {
     return true;
   }
 
-  bool TrajectoryPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
+  /**
+   * @brief  Given the current position, orientation, and velocity of the robot,
+   * compute velocity commands to send to the base
+   * @param cmd_vel Will be filled with the velocity command to be passed to the robot base
+   * @return True if a valid trajectory was found, false otherwise
+   */
+  bool TrajectoryPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
+  {
     if (! isInitialized()) {
       ROS_ERROR("This planner has not been initialized, please call initialize() before using this planner");
       return false;
@@ -389,6 +398,7 @@ namespace base_local_planner {
     }
 
     //now we'll prune the plan based on the position of the robot
+	// 修剪
     if(prune_plan_)
       prunePlan(global_pose, transformed_plan, global_plan_);
 
@@ -457,6 +467,7 @@ namespace base_local_planner {
         //if we're stopped... then we want to rotate to goal
         else{
           //set this so that we know its OK to be moving
+		  // rotateToGoal() 函数就是机器人最后调整角度方向的动作
           rotating_to_goal_ = true;
           if(!rotateToGoal(global_pose, robot_vel, goal_th, cmd_vel)) {
             return false;
@@ -487,6 +498,7 @@ namespace base_local_planner {
     */
 
     //pass along drive commands
+	//发送给机器人底盘的速度
     cmd_vel.linear.x = drive_cmds.getOrigin().getX();
     cmd_vel.linear.y = drive_cmds.getOrigin().getY();
     cmd_vel.angular.z = tf::getYaw(drive_cmds.getRotation());

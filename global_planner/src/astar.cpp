@@ -43,7 +43,17 @@ namespace global_planner {
 AStarExpansion::AStarExpansion(PotentialCalculator* p_calc, int xs, int ys) :
         Expander(p_calc, xs, ys) {
 }
-
+/**
+ * 计算所有的可行点
+ * @param  costs     [description]
+ * @param  start_x   [description]
+ * @param  start_y   [description]
+ * @param  end_x     [description]
+ * @param  end_y     [description]
+ * @param  cycles    [description]
+ * @param  potential [description]
+ * @return           [description]
+ */
 bool AStarExpansion::calculatePotentials(unsigned char* costs, double start_x, double start_y, double end_x, double end_y,
                                         int cycles, float* potential) {
     queue_.clear();

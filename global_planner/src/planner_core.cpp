@@ -52,6 +52,13 @@ PLUGINLIB_EXPORT_CLASS(global_planner::GlobalPlanner, nav_core::BaseGlobalPlanne
 
 namespace global_planner {
 
+/**
+ * [GlobalPlanner::outlineMap description]
+ * @param costarr [description]
+ * @param nx      [description]
+ * @param ny      [description]
+ * @param value   [description]
+ */
 void GlobalPlanner::outlineMap(unsigned char* costarr, int nx, int ny, unsigned char value) {
     unsigned char* pc = costarr;
     for (int i = 0; i < nx; i++)
@@ -219,6 +226,14 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     return makePlan(start, goal, default_tolerance_, plan);
 }
 
+/**
+* @brief Given a goal pose in the world, compute a plan 计算全局路径
+* @param start The start pose
+* @param goal The goal pose
+* @param tolerance The tolerance on the goal point for the planner
+* @param plan The plan... filled by the planner
+* @return True if a valid plan was found, false otherwise
+*/
 bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& goal,
                            double tolerance, std::vector<geometry_msgs::PoseStamped>& plan) {
     boost::mutex::scoped_lock lock(mutex_);
@@ -235,6 +250,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     std::string global_frame = frame_id_;
 
     //until tf can handle transforming things that are way in the past... we'll require the goal to be in our global frame
+    // 确定goal是否是在全局坐标系中
     if (tf::resolve(tf_prefix_, goal.header.frame_id) != tf::resolve(tf_prefix_, global_frame)) {
         ROS_ERROR(
                 "The goal pose passed to this planner must be in the %s frame.  It is instead in the %s frame.", tf::resolve(tf_prefix_, global_frame).c_str(), tf::resolve(tf_prefix_, goal.header.frame_id).c_str());
@@ -253,11 +269,14 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     unsigned int start_x_i, start_y_i, goal_x_i, goal_y_i;
     double start_x, start_y, goal_x, goal_y;
 
+    // 将世界坐标系转换到地图坐标系
     if (!costmap_->worldToMap(wx, wy, start_x_i, start_y_i)) {
         ROS_WARN(
                 "The robot's start position is off the global costmap. Planning will always fail, are you sure the robot has been properly localized?");
         return false;
     }
+
+    //
     if(old_navfn_behavior_){
         start_x = start_x_i;
         start_y = start_y_i;
@@ -281,6 +300,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     }
 
     //clear the starting cell within the costmap because we know it can't be an obstacle
+    // 在costmap中，清除机器人原点处障碍物
     tf::Stamped<tf::Pose> start_pose;
     tf::poseStampedMsgToTF(start, start_pose);
     clearRobotCell(start_pose, start_x_i, start_y_i);
@@ -324,7 +344,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     publishPlan(plan);
     delete potential_array_;
     return !plan.empty();
-}
+} 
 
 void GlobalPlanner::publishPlan(const std::vector<geometry_msgs::PoseStamped>& path) {
     if (!initialized_) {

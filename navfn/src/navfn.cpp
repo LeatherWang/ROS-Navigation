@@ -169,14 +169,20 @@ namespace navfn {
   // set goal, start positions for the nav fn
   //
 
-  void
-    NavFn::setGoal(int *g)
+  /**
+   * @brief  Sets the goal position for the planner. Note: the navigation cost field computed gives the cost to get to a given point from the goal, not from the start.
+   * @param goal the goal position 
+   */
+  void NavFn::setGoal(int *g)
     {
       goal[0] = g[0];
       goal[1] = g[1];
       ROS_DEBUG("[NavFn] Setting goal to %d,%d\n", goal[0], goal[1]);
     }
-
+  /**
+   * @brief  Sets the start position for the planner. Note: the navigation cost field computed gives the cost to get to a given point from the goal, not from the start.
+   * @param start the start position 
+   */
   void
     NavFn::setStart(int *g)
     {
@@ -222,7 +228,8 @@ namespace navfn {
 
   //
   // set up cost array, usually from ROS
-  //
+  // 通过costmap地图来设置cost array
+  // v = COST_NEUTRAL + COST_FACTOR * v
   // #define COSTYPE unsigned char
   void
     NavFn::setCostmap(const COSTTYPE *cmap, bool isROS, bool allow_unknown)
@@ -471,7 +478,7 @@ namespace navfn {
 
 
   // 
-  // Critical function: calculate updated potential value of a cell,
+  // Critical function: calculate updated potential value of a cell, 计算单元格的potential值
   //   given its neighbors' values
   // Planar-wave update calculation from two lowest neighbors in a 4-grid
   // Quadratic approximation to the interpolated value 
@@ -513,7 +520,7 @@ namespace navfn {
           ta = tc;
         }
 
-        // calculate new potential
+        // calculate new potential 二次插值逼近
         // 计算新的potential
         // (tc - ta) > costarr[n]
         //   yes:   pot = ta + hf
@@ -521,7 +528,7 @@ namespace navfn {
         float pot;
         if (dc >= hf)		// if too large, use ta-only update
           pot = ta+hf;
-        else			// two-neighbor interpolation update
+        else				// two-neighbor interpolation update
         {
           // use quadratic approximation
           // might speed this up through table lookup, but still have to 
@@ -552,6 +559,8 @@ namespace navfn {
           float re = INVSQRT2*(float)costarr[n+1];
           float ue = INVSQRT2*(float)costarr[n-nx];
           float de = INVSQRT2*(float)costarr[n+nx];
+		  
+		  // potential 代价值
           potarr[n] = pot;
           if (pot < curT)	// low-cost buffer block 
           {
@@ -704,12 +713,14 @@ namespace navfn {
           nwv = curPe;
 
         // reset pending flags on current priority buffer
+	    // 未到达过的单元格的标志位
         int *pb = curP;
         int i = curPe;			
-        while (i-- > 0)		
+        while (i-- > 0) 		
           pending[*(pb++)] = false;
 
         // process current priority buffer
+		// 处理current priority缓冲区
         pb = curP; 
         i = curPe;
         while (i-- > 0)		
@@ -722,7 +733,8 @@ namespace navfn {
         // 交换curP和nextP缓冲区
         curPe = nextPe;
         nextPe = 0;
-        pb = curP;		// swap buffers
+        
+		pb = curP;		// swap buffers
         curP = nextP;
         nextP = pb;
 
@@ -731,10 +743,11 @@ namespace navfn {
         {
           curT += priInc;	// increment priority threshold
 
-          // 交换curP和nextP缓冲区
           curPe = overPe;	// set current to overflow block
           overPe = 0;
-          pb = curP;		// swap buffers
+          
+		  // 交换curP和overP缓冲区
+		  pb = curP;		// swap buffers
           curP = overP;
           overP = pb;
         }
@@ -744,7 +757,8 @@ namespace navfn {
           if (potarr[startCell] < POT_HIGH)
             break;
       }
-
+	
+	  // 经过多少次循环，多少个单元被访问
       ROS_DEBUG("[NavFn] Used %d cycles, %d cells visited (%d%%), priority buf max %d\n", 
           cycle,nc,(int)((nc*100.0)/(ns-nobs)),nwv);
 
@@ -769,7 +783,8 @@ namespace navfn {
       int nc = 0;			// number of cells put into priority blocks
       int cycle = 0;		// which cycle we're on
 
-      // set initial threshold, based on distance
+      // set initial threshold, based on distance 
+	  // f(n) = g(n) + h(n)
       float dist = hypot(goal[0]-start[0], goal[1]-start[1])*(float)COST_NEUTRAL;
       curT = dist + curT;
 
@@ -876,7 +891,8 @@ namespace navfn {
 
       // set up start position at cell 
       // st is always upper left corner for 4-point bilinear interpolation 
-      // 设置起始地点
+      // 这里的命名是start是起点，但是在上层NavfnROS::getPlanFromPotential()中作者送入setStart()的是goal，
+	  // 所以这里的start其实是goal（目标点）
       if (st == NULL) st = start;
       int stc = st[1]*nx + st[0];
 
@@ -888,7 +904,7 @@ namespace navfn {
       // go for <n> cycles at most
       for (int i=0; i<n; i++)
       {
-        // check if near goal
+        // check if near goal round 返回值的四舍五入值
         // 0 < stc + (int)round(dx)+(int)(nx * round(dy)) < nx * ny -1 
         // 找到接近目标的点
         int nearest_point=std::max(0,std::min(nx*ny-1,stc+(int)round(dx)+(int)(nx*round(dy))));
@@ -990,6 +1006,7 @@ namespace navfn {
 
           // get interpolated gradient
           // 得到插值梯度
+		  // x = (1 - dy) * ((1 - dx) * gradx[stc]  + dx * gradx[stc+1]) + dy * ((1 - dx) * gradx[stcnx] + dx * gradx[stcnx + 1]) 
           float x1 = (1.0-dx)*gradx[stc] + dx*gradx[stc+1];
           float x2 = (1.0-dx)*gradx[stcnx] + dx*gradx[stcnx+1];
           float x = (1.0-dy)*x1 + dy*x2; // interpolated x
@@ -1010,12 +1027,13 @@ namespace navfn {
             return 0;
           }
 
-          // move in the right direction
+          // move in the right direction 
+		  // pathStep == 0.5
           float ss = pathStep/hypot(x, y);
           dx += x*ss;
           dy += y*ss;
 
-          // check for overflow
+          // check for overflow bresenham算法
           // -1.0 < dx < 1.0  -1.0 < dy < 1.0
           if (dx > 1.0) { stc++; dx -= 1.0; }
           if (dx < -1.0) { stc--; dx += 1.0; }
@@ -1067,7 +1085,7 @@ namespace navfn {
         else if (potarr[nx+1] < POT_HIGH)
           dy = COST_OBS;
       }
-      else	// not in an obstacle // 不在障碍物中 dx = dx + cv - potential
+      else	// not in an obstacle // 不在障碍物中 dx = dx + potarr[n] - potarr[n-1]
       {
         // dx calc, average to sides
         if (potarr[n-1] < POT_HIGH)

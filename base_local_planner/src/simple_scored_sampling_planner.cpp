@@ -39,6 +39,7 @@
 
 #include <ros/console.h>
 
+// 给推演出来的轨迹进行评分
 namespace base_local_planner {
   
   SimpleScoredSamplingPlanner::SimpleScoredSamplingPlanner(std::vector<TrajectorySampleGenerator*> gen_list, std::vector<TrajectoryCostFunction*>& critics, int max_samples) {

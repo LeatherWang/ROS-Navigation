@@ -172,7 +172,8 @@ namespace navfn {
     return planner_->calcNavFnDijkstra();
   }
 
-  void NavfnROS::clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my){
+  void NavfnROS::clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my)
+  {
     if(!initialized_){
       ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
       return;
@@ -182,7 +183,8 @@ namespace navfn {
     costmap_->setCost(mx, my, costmap_2d::FREE_SPACE);
   }
 
-  bool NavfnROS::makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp){
+  bool NavfnROS::makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp)
+  {
     makePlan(req.start, req.goal, resp.plan.poses);
 
     resp.plan.header.stamp = ros::Time::now();
@@ -197,12 +199,21 @@ namespace navfn {
   }
 
   bool NavfnROS::makePlan(const geometry_msgs::PoseStamped& start, 
-      const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
+      const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan)
+  {
     return makePlan(start, goal, default_tolerance_, plan);
   }
 
+  /**
+   * @brief Given a goal pose in the world, compute a plan
+   * @param start The start pose 
+   * @param goal The goal pose 
+   * @param plan The plan... filled by the planner
+   * @return True if a valid plan was found, false otherwise
+   */
   bool NavfnROS::makePlan(const geometry_msgs::PoseStamped& start, 
-      const geometry_msgs::PoseStamped& goal, double tolerance, std::vector<geometry_msgs::PoseStamped>& plan){
+      const geometry_msgs::PoseStamped& goal, double tolerance, std::vector<geometry_msgs::PoseStamped>& plan)
+  {
     boost::mutex::scoped_lock lock(mutex_);
     if(!initialized_){
       ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
@@ -227,6 +238,7 @@ namespace navfn {
       return false;
     }
 
+	// 设置起点
     double wx = start.pose.position.x;
     double wy = start.pose.position.y;
 
@@ -282,7 +294,8 @@ namespace navfn {
     int map_goal[2];
     map_goal[0] = mx;
     map_goal[1] = my;
-
+	
+	// 设置路径规划器的目标点和起始点
     planner_->setStart(map_goal);
     planner_->setGoal(map_start);
 
@@ -296,14 +309,22 @@ namespace navfn {
     bool found_legal = false;
     double best_sdist = DBL_MAX;
 
+	// p.y = goal.y - tolerance;
     p.pose.position.y = goal.pose.position.y - tolerance;
-
-    while(p.pose.position.y <= goal.pose.position.y + tolerance){
+	
+	// p.y <= goal.y + tolerance
+    while(p.pose.position.y <= goal.pose.position.y + tolerance)
+	{
+	  // p.x = goal.x - tolerance
       p.pose.position.x = goal.pose.position.x - tolerance;
-      while(p.pose.position.x <= goal.pose.position.x + tolerance){
+	  
+	  // p.x <= goal.x + tolerance
+      while(p.pose.position.x <= goal.pose.position.x + tolerance)
+	  {
         double potential = getPointPotential(p.pose.position);
         double sdist = sq_distance(p, goal);
-        if(potential < POT_HIGH && sdist < best_sdist){
+        if(potential < POT_HIGH && sdist < best_sdist)
+		{
           best_sdist = sdist;
           best_pose = p;
           found_legal = true;
@@ -315,6 +336,8 @@ namespace navfn {
 
     if(found_legal){
       //extract the plan
+	  // 提取路径
+	  // goal ==> best_pose
       if(getPlanFromPotential(best_pose, plan)){
         //make sure the goal we push on has the same timestamp as the rest of the plan
         geometry_msgs::PoseStamped goal_copy = best_pose;
@@ -360,7 +383,11 @@ namespace navfn {
     return !plan.empty();
   }
 
-  void NavfnROS::publishPlan(const std::vector<geometry_msgs::PoseStamped>& path, double r, double g, double b, double a){
+  /**
+   * @brief  Publish a path for visualization purposes publish用于显示的路径
+   */
+  void NavfnROS::publishPlan(const std::vector<geometry_msgs::PoseStamped>& path, double r, double g, double b, double a)
+  {
     if(!initialized_){
       ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
       return;
@@ -384,7 +411,15 @@ namespace navfn {
     plan_pub_.publish(gui_path);
   }
 
-  bool NavfnROS::getPlanFromPotential(const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
+  /** 
+   * @brief Compute a plan to a goal after the potential for a start point has already been computed (Note: You should call computePotential first)
+   * 		当起点的potential计算完后，计算得到一个路径
+   * @param goal The goal pose to create a plan to
+   * @param plan The plan... filled by the planner
+   * @return True if a valid plan was found, false otherwise
+   */
+  bool NavfnROS::getPlanFromPotential(const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan)
+  {
     if(!initialized_){
       ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
       return false;
@@ -414,6 +449,7 @@ namespace navfn {
     map_goal[0] = mx;
     map_goal[1] = my;
 
+	// 把goal送到start？？？
     planner_->setStart(map_goal);
 
     planner_->calcPath(costmap_->getSizeInCellsX() * 4);

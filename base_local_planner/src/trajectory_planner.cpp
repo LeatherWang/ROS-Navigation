@@ -56,6 +56,7 @@ using namespace costmap_2d;
 
 namespace base_local_planner{
 
+  // 重新配置环境
   void TrajectoryPlanner::reconfigure(BaseLocalPlannerConfig &cfg)
   {
       BaseLocalPlannerConfig config(cfg);
@@ -904,7 +905,8 @@ namespace base_local_planner{
 
   //given the current state of the robot, find a good trajectory
   Trajectory TrajectoryPlanner::findBestPath(tf::Stamped<tf::Pose> global_pose, tf::Stamped<tf::Pose> global_vel,
-      tf::Stamped<tf::Pose>& drive_velocities){
+      tf::Stamped<tf::Pose>& drive_velocities)
+  {
 
     Eigen::Vector3f pos(global_pose.getOrigin().getX(), global_pose.getOrigin().getY(), tf::getYaw(global_pose.getRotation()));
     Eigen::Vector3f vel(global_vel.getOrigin().getX(), global_vel.getOrigin().getY(), tf::getYaw(global_vel.getRotation()));
